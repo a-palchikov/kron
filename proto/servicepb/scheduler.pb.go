@@ -16,9 +16,10 @@ It has these top-level messages:
 	Quota
 	GetJobRequest
 	GetJobResponse
+	JobRef
 	JobStartedRequest
 	JobStartedResponse
-	JobProgressRequest
+	JobProgressStep
 	JobProgressResponse
 	JobStoppedRequest
 	JobStoppedResponse

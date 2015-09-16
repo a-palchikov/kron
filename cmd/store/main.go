@@ -18,18 +18,13 @@ import (
 )
 
 var (
-	/*
-		apiPort   = flag.Int("api", 5555, "api server")
-		storePort = flag.Int("store", 5556, "store service")
-		verbose   = flag.Bool("verbose", true, "vebosity")
-	*/
-	apiPort, storePort int
-	verbose            bool
+	apiPort, subscriptionPort int
+	verbose                   bool
 )
 
 func init() {
 	flag.IntVar(&apiPort, "api", 5555, "api server")
-	flag.IntVar(&storePort, "store", 5556, "store service")
+	flag.IntVar(&subscriptionPort, "store", 5556, "subscription service")
 	flag.BoolVar(&verbose, "verbose", true, "vebosity")
 }
 
@@ -51,7 +46,7 @@ func main() {
 	}
 
 	var err error
-	if err = createStoreServer(srv); err != nil {
+	if err = createSubscriptionServer(srv); err != nil {
 		log.Fatalln(err)
 	}
 	err = createAndRunApiServer(srv)
@@ -73,18 +68,18 @@ func createAndRunApiServer(s *server) error {
 	return apiServer.Serve(listener)
 }
 
-func createStoreServer(s *server) error {
+func createSubscriptionServer(s *server) error {
 	ctx, err := zmq.NewContext()
 	if err != nil {
 		return err
 	}
 	socket, err := ctx.NewSocket(zmq.PUB)
-	socket.Bind(fmt.Sprintf("tcp://*:%d", storePort))
+	socket.Bind(fmt.Sprintf("tcp://*:%d", subscriptionPort))
 	if err != nil {
 		return err
 	}
 	if verbose {
-		log.Printf("store service on %d", storePort)
+		log.Printf("subscription service on %d", subscriptionPort)
 	}
 	go s.loop(socket)
 	return nil

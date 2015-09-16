@@ -18,14 +18,29 @@ var _ = proto.Marshal
 var _ = fmt.Errorf
 var _ = math.Inf
 
-type JobStartedRequest struct {
+type JobRef struct {
 	JobId  uint64 `protobuf:"varint,1,opt,name=job_id" json:"job_id,omitempty"`
 	NodeId uint64 `protobuf:"varint,2,opt,name=node_id" json:"node_id,omitempty"`
+}
+
+func (m *JobRef) Reset()         { *m = JobRef{} }
+func (m *JobRef) String() string { return proto.CompactTextString(m) }
+func (*JobRef) ProtoMessage()    {}
+
+type JobStartedRequest struct {
+	Job *JobRef `protobuf:"bytes,1,opt,name=job" json:"job,omitempty"`
 }
 
 func (m *JobStartedRequest) Reset()         { *m = JobStartedRequest{} }
 func (m *JobStartedRequest) String() string { return proto.CompactTextString(m) }
 func (*JobStartedRequest) ProtoMessage()    {}
+
+func (m *JobStartedRequest) GetJob() *JobRef {
+	if m != nil {
+		return m.Job
+	}
+	return nil
+}
 
 type JobStartedResponse struct {
 }
@@ -34,46 +49,37 @@ func (m *JobStartedResponse) Reset()         { *m = JobStartedResponse{} }
 func (m *JobStartedResponse) String() string { return proto.CompactTextString(m) }
 func (*JobStartedResponse) ProtoMessage()    {}
 
-type JobProgressRequest struct {
-	Job    *JobProgressRequest_JobRef `protobuf:"bytes,1,opt,name=job" json:"job,omitempty"`
-	Output *JobProgressRequest_Output `protobuf:"bytes,2,opt,name=output" json:"output,omitempty"`
+type JobProgressStep struct {
+	Job    *JobRef                 `protobuf:"bytes,1,opt,name=job" json:"job,omitempty"`
+	Output *JobProgressStep_Output `protobuf:"bytes,2,opt,name=output" json:"output,omitempty"`
 }
 
-func (m *JobProgressRequest) Reset()         { *m = JobProgressRequest{} }
-func (m *JobProgressRequest) String() string { return proto.CompactTextString(m) }
-func (*JobProgressRequest) ProtoMessage()    {}
+func (m *JobProgressStep) Reset()         { *m = JobProgressStep{} }
+func (m *JobProgressStep) String() string { return proto.CompactTextString(m) }
+func (*JobProgressStep) ProtoMessage()    {}
 
-func (m *JobProgressRequest) GetJob() *JobProgressRequest_JobRef {
+func (m *JobProgressStep) GetJob() *JobRef {
 	if m != nil {
 		return m.Job
 	}
 	return nil
 }
 
-func (m *JobProgressRequest) GetOutput() *JobProgressRequest_Output {
+func (m *JobProgressStep) GetOutput() *JobProgressStep_Output {
 	if m != nil {
 		return m.Output
 	}
 	return nil
 }
 
-type JobProgressRequest_JobRef struct {
-	JobId  uint64 `protobuf:"varint,1,opt,name=job_id" json:"job_id,omitempty"`
-	NodeId uint64 `protobuf:"varint,2,opt,name=node_id" json:"node_id,omitempty"`
-}
-
-func (m *JobProgressRequest_JobRef) Reset()         { *m = JobProgressRequest_JobRef{} }
-func (m *JobProgressRequest_JobRef) String() string { return proto.CompactTextString(m) }
-func (*JobProgressRequest_JobRef) ProtoMessage()    {}
-
-type JobProgressRequest_Output struct {
+type JobProgressStep_Output struct {
 	Stdout []byte `protobuf:"bytes,1,opt,name=stdout,proto3" json:"stdout,omitempty"`
 	Stderr []byte `protobuf:"bytes,2,opt,name=stderr,proto3" json:"stderr,omitempty"`
 }
 
-func (m *JobProgressRequest_Output) Reset()         { *m = JobProgressRequest_Output{} }
-func (m *JobProgressRequest_Output) String() string { return proto.CompactTextString(m) }
-func (*JobProgressRequest_Output) ProtoMessage()    {}
+func (m *JobProgressStep_Output) Reset()         { *m = JobProgressStep_Output{} }
+func (m *JobProgressStep_Output) String() string { return proto.CompactTextString(m) }
+func (*JobProgressStep_Output) ProtoMessage()    {}
 
 type JobProgressResponse struct {
 }
@@ -83,13 +89,19 @@ func (m *JobProgressResponse) String() string { return proto.CompactTextString(m
 func (*JobProgressResponse) ProtoMessage()    {}
 
 type JobStoppedRequest struct {
-	JobId  uint64 `protobuf:"varint,1,opt,name=job_id" json:"job_id,omitempty"`
-	NodeId uint64 `protobuf:"varint,2,opt,name=node_id" json:"node_id,omitempty"`
+	Job *JobRef `protobuf:"bytes,1,opt,name=job" json:"job,omitempty"`
 }
 
 func (m *JobStoppedRequest) Reset()         { *m = JobStoppedRequest{} }
 func (m *JobStoppedRequest) String() string { return proto.CompactTextString(m) }
 func (*JobStoppedRequest) ProtoMessage()    {}
+
+func (m *JobStoppedRequest) GetJob() *JobRef {
+	if m != nil {
+		return m.Job
+	}
+	return nil
+}
 
 type JobStoppedResponse struct {
 }
@@ -139,7 +151,7 @@ func (c *feedbackServiceClient) JobProgress(ctx context.Context, opts ...grpc.Ca
 }
 
 type FeedbackService_JobProgressClient interface {
-	Send(*JobProgressRequest) error
+	Send(*JobProgressStep) error
 	CloseAndRecv() (*JobProgressResponse, error)
 	grpc.ClientStream
 }
@@ -148,7 +160,7 @@ type feedbackServiceJobProgressClient struct {
 	grpc.ClientStream
 }
 
-func (x *feedbackServiceJobProgressClient) Send(m *JobProgressRequest) error {
+func (x *feedbackServiceJobProgressClient) Send(m *JobProgressStep) error {
 	return x.ClientStream.SendMsg(m)
 }
 
@@ -204,7 +216,7 @@ func _FeedbackService_JobProgress_Handler(srv interface{}, stream grpc.ServerStr
 
 type FeedbackService_JobProgressServer interface {
 	SendAndClose(*JobProgressResponse) error
-	Recv() (*JobProgressRequest, error)
+	Recv() (*JobProgressStep, error)
 	grpc.ServerStream
 }
 
@@ -216,8 +228,8 @@ func (x *feedbackServiceJobProgressServer) SendAndClose(m *JobProgressResponse) 
 	return x.ServerStream.SendMsg(m)
 }
 
-func (x *feedbackServiceJobProgressServer) Recv() (*JobProgressRequest, error) {
-	m := new(JobProgressRequest)
+func (x *feedbackServiceJobProgressServer) Recv() (*JobProgressStep, error) {
+	m := new(JobProgressStep)
 	if err := x.ServerStream.RecvMsg(m); err != nil {
 		return nil, err
 	}

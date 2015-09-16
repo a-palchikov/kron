@@ -1,5 +1,7 @@
 package service
 
 type Config struct {
-	master bool
+	Master       bool
+	ApiPort      int
+	FeedbackPort int
 }
