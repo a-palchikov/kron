@@ -1,0 +1,43 @@
+syntax="proto3";
+
+package servicepb;
+
+message JobStartedRequest {
+    uint64 job_id = 1;
+    uint64 node_id = 2;
+}
+
+message JobStartedResponse {
+}
+
+message JobProgressRequest {
+    message JobRef {
+        uint64 job_id = 1;
+        uint64 node_id = 2;
+    }
+    message Output {
+        bytes stdout = 1;
+        bytes stderr = 2;
+    }
+    JobRef job = 1;
+    Output output = 2;
+}
+
+message JobProgressResponse {
+}
+
+message JobStoppedRequest {
+    uint64 job_id = 1;
+    uint64 node_id = 2;
+}
+
+message JobStoppedResponse {
+}
+
+service FeedbackService {
+    // JobStarted notifies the master that the job has started on given node
+    rpc JobStarted(JobStartedRequest) returns (JobStartedResponse) {}
+    rpc JobProgress(stream JobProgressRequest) returns (JobProgressResponse) {}
+    // JobStopped notifies the master that the job has stopped on given node
+    rpc JobStopped(JobStoppedRequest) returns (JobStoppedResponse) {}
+}

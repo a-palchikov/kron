@@ -1,54 +1,71 @@
 package kron
 
 import (
-	"service/api"
+	pb "service/proto"
 
 	"golang.org/x/net/context"
 )
 
 type (
-	server struct{}
+	Server struct {
+		Infrastructure
+		config *Config
+		id     NodeId
+		//scheduler.Scheduler	// actual cron management
+	}
 
 	/*
-		// Node in a cluster
 		Node interface {
-			// Schedule schedules a process (on a remote node).
-			// name names the new cron job.
-			// command defines the command to execute, optionally prefixed with a node name,
-			// and a list of arguments.
-			// cron is a scheduled time as a cron expression.
-			// tags name the node tags this job is to run on.
-			Schedule(name string, command string, cron string, tags []string) (Job, error)
-			// Serf (https://www.serfdom.io/) for cluster membership/failure detection/orchestration.
-			Jobs() []Job
+			IsActive() bool
+			// FIXME: more queries
 		}
-
-			Job interface {
-				Stop() error
-				Pause() error
-				Status() (JobStatus, error)
-			}
-
-			JobStatus struct {
-				successCount int
-				errorCount   int
-				tags         []string
-				// lastRun	time.Time
-			}
-
-			Process struct {
-				Stdin  io.Reader
-				Stdout io.Reader
-				Stderr io.Reader
-
-				// TODO: API
-			}
 	*/
 
+	NodeId uint64
+
+	Infrastructure interface {
+		// Persist current schedule
+		// This is done every time a job is added/removed to keep all nodes in sync
+		SetSchedule([]*pb.Job) error
+		// ScheduleJob publishes scheduled job on the schedule topic so that matching nodes
+		// can pick it up
+		ScheduleJob(*pb.Job) error
+		// FIXME: this is a bit hacky as there are responsibilities of a cluster membership
+		// framework
+		// Add a new node to cluster
+		AddNode(host string) (NodeId, error)
+		// Nodes() ([]Node, error)
+	}
 )
 
-func (s *server) Schedule(ctx context.Context, job *api.Job) (*api.ScheduleResponse, error) {
-	// TODO: iterate all available nodes matching those with job.tags
-	// dispatch job to node(s) given job's disposition.
-	return &api.ScheduleResponse{}, nil
+func New(config *Config, infrastructure Infrastructure) (*Server, error) {
+	server := Server{
+		config:         config,
+		Infrastructure: infrastructure,
+	}
+
+	if !config.master { // perform for server too?
+		host, err := os.Hostname()
+		if err != nil {
+			return nil, err
+		}
+
+		if id, err := infrastructure.AddNode(host); err != nil {
+			return nil, err
+		}
+	}
+
+	// go server.Scheduler.Loop(server.Infrastructure)	// Infrastructure arg?
+
+	return &server, nil
+}
+
+func (s *Server) Stop() error {
+	// server.Scheduler.Stop()
+	return nil
+}
+
+func (s *server) Schedule(ctx context.Context, req *pb.ScheduleRequest) (*pb.ScheduleResponse, error) {
+	// TODO
+	return &pb.ScheduleResponse{}, nil
 }

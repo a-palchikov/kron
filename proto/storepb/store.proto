@@ -1,0 +1,24 @@
+syntax="proto3";
+
+package storepb;
+
+import "servicepb/scheduler.proto";
+
+message SetScheduleRequest {
+    repeated servicepb.Job jobs = 1;
+}
+
+message SetScheduleResponse {
+}
+
+message ScheduleJobRequest {
+    servicepb.Job job = 1;
+}
+
+message ScheduleJobResponse {
+}
+
+service StoreService {
+    rpc SetSchedule(SetScheduleRequest) returns(SetScheduleResponse) {}
+    rpc ScheduleJob(ScheduleJobRequest) returns(ScheduleJobResponse) {}
+}

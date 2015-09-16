@@ -1,0 +1,52 @@
+syntax="proto3";
+
+package servicepb;
+
+message ScheduleRequest {
+    Job job = 1;
+    Quota quota = 2;
+    repeated string tags = 5;
+}
+
+message ScheduleResponse {
+    bool ok = 1;
+    uint64 job_id = 2;
+}
+
+message Job {
+    string name = 1;
+    string command_line = 2;
+    string when = 3;
+    uint64 id = 4;
+}
+
+message Quota {
+    message CPU {
+        // Units: shares (with 1024 shares by default)
+        int64 limit = 1;    // memory.limit_in_bytes (memory.memsw.limit_in_bytes)
+    }
+    message Memory {
+        // Units: bytes
+        int64 limit = 1;
+    }
+    message IO {
+        // IO limits (weight division/throttling):
+        //  1. read/write speed (blkio.throttle.read_bps_device, blkio.throttle.write_bps_device)
+        //  2. (blkio.weight)
+        // FIXME: Units: bytes
+        int64 limit = 1;    // max number of bytes that can be written
+    }
+}
+
+message GetJobRequest {
+    uint64 job_id = 1;
+}
+
+message GetJobResponse {
+    Job job = 1;
+}
+
+service SchedulerService {
+    rpc Schedule(ScheduleRequest) returns(ScheduleResponse) {}
+    rpc GetJob(GetJobRequest) returns(GetJobResponse) {}
+}
