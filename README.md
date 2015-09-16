@@ -1,5 +1,3 @@
-![kron](https://github.com/a-palchikov/kron)
-
 ## About kron
 
 - [Building](https://github.com/a-palchikov/kron/wiki/Building)
