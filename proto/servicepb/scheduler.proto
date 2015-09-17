@@ -5,7 +5,7 @@ package servicepb;
 message ScheduleRequest {
     Job job = 1;
     Quota quota = 2;
-    repeated string tags = 5;
+    repeated string tags = 3;
 }
 
 message ScheduleResponse {
@@ -36,6 +36,9 @@ message Quota {
         // FIXME: Units: bytes
         int64 limit = 1;    // max number of bytes that can be written
     }
+    CPU cpu_quota = 1;
+    Memory memory_quota = 2;
+    IO io_quota = 3;
 }
 
 message GetJobRequest {

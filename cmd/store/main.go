@@ -104,12 +104,12 @@ func (s *server) loop(socket *zmq.Socket) {
 		select {
 		case schedule := <-s.schedules:
 			// FIXME: report error
-			if err = send(socket, schedule, "SetSchedule"); err != nil {
+			if err = send(socket, schedule, service.ScheduleUpdateNotification); err != nil {
 				log.Printf("cannot publish schedule=%v: %v", schedule, err)
 			}
 		case job := <-s.jobs:
 			// FIXME: report error
-			if err = send(socket, job, "ScheduleJob"); err != nil {
+			if err = send(socket, job, service.JobUpdateNotification); err != nil {
 				log.Printf("cannot publish job=%v: %v", job, err)
 			}
 		case <-s.quit:

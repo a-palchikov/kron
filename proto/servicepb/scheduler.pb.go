@@ -43,7 +43,7 @@ var _ = math.Inf
 type ScheduleRequest struct {
 	Job   *Job     `protobuf:"bytes,1,opt,name=job" json:"job,omitempty"`
 	Quota *Quota   `protobuf:"bytes,2,opt,name=quota" json:"quota,omitempty"`
-	Tags  []string `protobuf:"bytes,5,rep,name=tags" json:"tags,omitempty"`
+	Tags  []string `protobuf:"bytes,3,rep,name=tags" json:"tags,omitempty"`
 }
 
 func (m *ScheduleRequest) Reset()         { *m = ScheduleRequest{} }
@@ -85,11 +85,35 @@ func (m *Job) String() string { return proto.CompactTextString(m) }
 func (*Job) ProtoMessage()    {}
 
 type Quota struct {
+	CpuQuota    *Quota_CPU    `protobuf:"bytes,1,opt,name=cpu_quota" json:"cpu_quota,omitempty"`
+	MemoryQuota *Quota_Memory `protobuf:"bytes,2,opt,name=memory_quota" json:"memory_quota,omitempty"`
+	IoQuota     *Quota_IO     `protobuf:"bytes,3,opt,name=io_quota" json:"io_quota,omitempty"`
 }
 
 func (m *Quota) Reset()         { *m = Quota{} }
 func (m *Quota) String() string { return proto.CompactTextString(m) }
 func (*Quota) ProtoMessage()    {}
+
+func (m *Quota) GetCpuQuota() *Quota_CPU {
+	if m != nil {
+		return m.CpuQuota
+	}
+	return nil
+}
+
+func (m *Quota) GetMemoryQuota() *Quota_Memory {
+	if m != nil {
+		return m.MemoryQuota
+	}
+	return nil
+}
+
+func (m *Quota) GetIoQuota() *Quota_IO {
+	if m != nil {
+		return m.IoQuota
+	}
+	return nil
+}
 
 type Quota_CPU struct {
 	// Units: shares (with 1024 shares by default)

@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"net"
-	"os"
 	"sync"
 
 	pb "github.com/a-palchikov/kron/proto/servicepb"
@@ -17,6 +16,7 @@ type (
 	JobId uint64
 
 	Server struct {
+		// *Worker
 		Store
 		Cluster
 		config  *Config
@@ -34,17 +34,14 @@ func New(config *Config, store Store, cluster Cluster) (*Server, error) {
 		Cluster: cluster,
 	}
 
-	host, err := os.Hostname()
-	if err != nil {
-		return nil, err
-	}
-
-	var id NodeId
-
-	if id, err = cluster.AddNode(host); err != nil {
-		return nil, err
-	}
-	server.id = uint64(id)
+	/*
+		// master is also a worker
+		node, err := NewWorker()
+		if err != nil {
+			return nil, err
+		}
+		server.Worker = node
+	*/
 
 	// go server.Scheduler.Loop(server.Store)
 	// go s.loop()
