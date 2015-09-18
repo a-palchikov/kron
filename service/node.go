@@ -3,28 +3,28 @@ package service
 import (
 	"os"
 
+	"google.golang.org/grpc"
+
 	"github.com/a-palchikov/kron/proc"
 	pb "github.com/a-palchikov/kron/proto/servicepb"
 )
 
 // Worker node specific functionality
 type Worker struct {
-	Cluster
-	Store
-	id uint64
-	// redundant schedule for this node, if it gets elected to be a new master
-	jobs           []*pb.Job
-	queue          chan *pb.ScheduleRequest // worker node execution queue
-	tags           map[string]struct{}
-	feedbackClient *pb.FeedbackServiceClient
+	config *Config
+	id     uint64
+	jobs   []*pb.Job                // redundant job schedule
+	queue  chan *pb.ScheduleRequest // job execution queue
+	tags   map[string]struct{}
+	// Feedback client
+	conn   *grpc.ClientConn
+	client pb.FeedbackServiceClient
 }
 
-func NewWorker(store Store, cluster Cluster, tags []string) (*Worker, error) {
+func NewWorker(config *Config, store Store, cluster Cluster, tags []string) (*Worker, error) {
 	w := &Worker{
-		Cluster: cluster,
-		Store:   store,
-		queue:   make(chan *pb.ScheduleRequest),
-		tags:    make(map[string]struct{}),
+		queue: make(chan *pb.ScheduleRequest),
+		tags:  make(map[string]struct{}),
 	}
 
 	host, err := os.Hostname()
@@ -45,8 +45,23 @@ func NewWorker(store Store, cluster Cluster, tags []string) (*Worker, error) {
 
 	store.SetObserver(w)
 
-	go w.loop()
+	// go w.loop()
 	return w, nil
+}
+
+func (w *Worker) initFeedbackClient() error {
+	conn, err := grpc.Dial(w.config.FeedbackAddr)
+	if err != nil {
+		return err
+	}
+	w.client = pb.NewFeedbackServiceClient(conn)
+	return nil
+}
+
+func (w *Worker) closeFeedbackClient() error {
+	err := w.conn.Close()
+	w.client = nil
+	return err
 }
 
 // Observer
@@ -61,6 +76,9 @@ func (w *Worker) JobRequestUpdate(req *pb.ScheduleRequest) {
 	}
 }
 
+// canExecute decides if the worker can execute the specified job.
+// The decision is based on matching against the set of tags the worker has assigned.
+// Further refinements can include checking against machine configuration, etc.
 func (w *Worker) canExecute(req *pb.ScheduleRequest) bool {
 	var ok bool
 
@@ -82,6 +100,7 @@ func (w *Worker) loop() {
 			// FIXME: no blocking here
 			cmd = proc.Command(req.Job.CommandLine, req.Quota)
 			cmd.Run()
+			// TODO: communicate job progress with the master node using feedback client
 		}
 	}
 }

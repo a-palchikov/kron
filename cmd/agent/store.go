@@ -26,19 +26,20 @@ type store struct {
 	jobs      chan []byte
 	mux       *router.Router
 	// masterChanges chan []byte
+	done chan struct{}
 }
 
 // connectToStore connects to the Store service using the following two endpoints:
 //  * API: push notifications from master to store
 //  * subscription service: notifications from store to nodes
 func connectToStore(apiAddr string, subscriptionAddr string) (*store, error) {
-	context, err := zmq.NewContext()
+	ctx, err := zmq.NewContext()
 	if err != nil {
 		return nil, err
 	}
 
 	// frontend subscribes to all topics on the Store subscriptions service
-	frontend, err := context.NewSocket(zmq.SUB)
+	frontend, err := ctx.NewSocket(zmq.SUB)
 	if err != nil {
 		return nil, err
 	}
@@ -48,7 +49,7 @@ func connectToStore(apiAddr string, subscriptionAddr string) (*store, error) {
 	}
 
 	// backend is a local publisher that will help distribute topics locally
-	backend, err := context.NewSocket(zmq.PUB)
+	backend, err := ctx.NewSocket(zmq.PUB)
 	if err != nil {
 		return nil, err
 	}
@@ -66,7 +67,6 @@ func connectToStore(apiAddr string, subscriptionAddr string) (*store, error) {
 		return nil, err
 	}
 
-	// create the Store API client
 	conn, err := grpc.Dial(apiAddr)
 	if err != nil {
 		return nil, err
@@ -79,16 +79,24 @@ func connectToStore(apiAddr string, subscriptionAddr string) (*store, error) {
 		schedules: make(chan []byte),
 		jobs:      make(chan []byte),
 		mux:       mux,
+		done:      make(chan struct{}),
 	}
 
-	mux.Add(service.ScheduleUpdateNotification, s.schedules)
-	mux.Add(service.JobUpdateNotification, s.jobs)
+	if err = mux.Add(service.ScheduleUpdateNotification, s.schedules); err != nil {
+		return nil, err
+	}
+	if err = mux.Add(service.JobUpdateNotification, s.jobs); err != nil {
+		return nil, err
+	}
 
 	go s.loop()
+	go mux.Run()
 	return s, nil
 }
 
 func (s *store) Close() error {
+	s.done <- struct{}{}
+	<-s.done
 	return s.conn.Close()
 }
 
@@ -149,6 +157,10 @@ func (s *store) loop() {
 					change, _ := decodeMasterChange(payload)
 					s.notifier.ScheduleUpdate(change)
 			*/
+		case <-s.done:
+			s.mux.Close()
+			s.done <- struct{}{}
+			return
 		}
 	}
 }

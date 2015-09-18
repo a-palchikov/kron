@@ -8,7 +8,7 @@ import (
 )
 
 var (
-	isMaster              = flag.Bool("master", true, "force master node")
+	master                = flag.Bool("master", true, "master mode")
 	apiPort               = flag.Int("api", 5557, "api server")
 	feedbackPort          = flag.Int("feedback", 5558, "feedback server")
 	storeApiAddr          = flag.String("storeApi", ":5555", "store api server")
@@ -19,7 +19,7 @@ func main() {
 	flag.Parse()
 
 	config := service.Config{
-		Master:       *isMaster,
+		Master:       *master,
 		ApiPort:      *apiPort,
 		FeedbackPort: *feedbackPort,
 	}
@@ -27,7 +27,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("cannot connect to store: %v", err)
 	}
-	server, err := service.New(&config, store, store)
+	server, err := service.New(&config, store, store, nil)
 	if err != nil {
 		log.Fatalf("cannot create service: %v", err)
 	}

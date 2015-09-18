@@ -7,6 +7,7 @@ import (
 	"sync"
 
 	pb "github.com/a-palchikov/kron/proto/servicepb"
+	"github.com/a-palchikov/kron/scheduler"
 	"google.golang.org/grpc"
 
 	"golang.org/x/net/context"
@@ -16,35 +17,32 @@ type (
 	JobId uint64
 
 	Server struct {
-		// *Worker
-		Store
 		Cluster
-		config  *Config
-		id      uint64
-		mu      *sync.Mutex
-		pending map[uint64][]uint64 // jobId->[]nodeId
-		// scheduler.Scheduler	// cron management
+		Store
+		*Worker
+		mu                  *sync.Mutex
+		pending             map[uint64][]uint64 // jobId->[]nodeId
+		scheduler.Scheduler                     // cron management
 	}
 )
 
-func New(config *Config, store Store, cluster Cluster) (*Server, error) {
-	server := &Server{
-		config:  config,
-		Store:   store,
-		Cluster: cluster,
+func New(config *Config, store Store, cluster Cluster, tags []string) (*Server, error) {
+	// FIXME: create only parts of the Worker that the server needs as well
+	// the mode-sensitive parts are to be inited on-demand with the mode (master<->worker) change
+	worker, err := NewWorker(config, store, cluster, tags)
+	if err != nil {
+		return nil, err
 	}
 
-	/*
-		// master is also a worker
-		node, err := NewWorker()
-		if err != nil {
-			return nil, err
-		}
-		server.Worker = node
-	*/
+	server := &Server{
+		Worker:  worker,
+		Store:   store,
+		Cluster: cluster,
+		pending: make(map[uint64][]uint64),
+	}
 
-	// go server.Scheduler.Loop(server.Store)
-	// go s.loop()
+	go server.Scheduler.Run()
+	go server.loop()
 
 	return server, nil
 }
@@ -55,6 +53,7 @@ func (s *Server) Serve() error {
 	if err != nil {
 		return err
 	}
+	defer apiListener.Close()
 
 	feedbackServer, feedbackListener, err := bindFeedback(s)
 	if err != nil {
@@ -62,7 +61,10 @@ func (s *Server) Serve() error {
 	}
 
 	// FIXME: report serve errors from feedback service
-	go feedbackServer.Serve(feedbackListener)
+	go func() {
+		defer feedbackListener.Close()
+		feedbackServer.Serve(feedbackListener)
+	}()
 
 	return apiServer.Serve(apiListener)
 }
@@ -105,9 +107,6 @@ func (s *Server) GetJob(ctx context.Context, req *pb.GetJobRequest) (*pb.GetJobR
 
 // FeedbackService
 func (s *Server) JobStarted(ctx context.Context, req *pb.JobStartedRequest) (*pb.JobStartedResponse, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.addPendingJob(req.Job)
 	return &pb.JobStartedResponse{}, nil
 }
 
@@ -128,35 +127,43 @@ func (s *Server) JobProgress(stream pb.FeedbackService_JobProgressServer) error 
 }
 
 func (s *Server) JobStopped(ctx context.Context, req *pb.JobStoppedRequest) (*pb.JobStoppedResponse, error) {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	s.removePendingJob(req.Job)
 	return &pb.JobStoppedResponse{}, nil
 }
 
-// TODO: server loop
 func (s *Server) loop() error {
+	var id scheduler.JobId
+
+	for {
+		select {
+		case id = <-s.Scheduler.Next:
+			job := s.jobForId(id)
+			s.Store.SetJob(job)
+		case id = <-s.Scheduler.Expired:
+			s.removeJob(id)
+			s.Store.SetSchedule(s.jobs)
+		}
+	}
+}
+
+func (s *Server) jobForId(id scheduler.JobId) *pb.Job {
+	for _, job := range s.jobs {
+		if job.Id == uint64(id) {
+			return job
+		}
+	}
 	return nil
 }
 
-// Callers must have s.mu locked.
-func (s *Server) addPendingJob(job *pb.JobRef) {
-	var nodes []uint64
-	var ok bool
+func (s *Server) removeJob(jobId scheduler.JobId) {
+	var i int
+	var job *pb.Job
 
-	if nodes, ok = s.pending[job.JobId]; !ok {
-		s.pending[job.JobId] = make([]uint64, 1)
+	for i, job = range s.jobs {
+		if job.Id == uint64(jobId) {
+			break
+		}
 	}
-	nodes = append(nodes, job.NodeId)
-}
-
-// Callers must have s.mu locked.
-func (s *Server) removePendingJob(job *pb.JobRef) {
-	var ok bool
-
-	if _, ok = s.pending[job.JobId]; !ok {
-		return
+	if i < len(s.jobs) {
+		s.jobs = append(s.jobs[:i], s.jobs[i+1:]...)
 	}
-	delete(s.pending, job.JobId)
-	// TODO: upon job completion, push new schedule to store to sync with all nodes
 }

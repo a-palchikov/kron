@@ -13,6 +13,7 @@ type (
 		receivers map[*zmq.Socket]*receiver
 		poller    *zmq.Poller
 		addr      string
+		done      bool
 	}
 
 	receiver struct {
@@ -31,7 +32,6 @@ func New(addr string) (*Router, error) {
 		addr:   addr,
 	}
 
-	// go splitter.loop()
 	return router, nil
 }
 
@@ -54,13 +54,17 @@ func (r *Router) Add(topic string, sink chan<- []byte) error {
 	return nil
 }
 
+func (s *Router) Close() {
+	s.done = true
+}
+
 func (s *Router) Run() error {
 	var err error
 	var items []zmq.Polled
 	var payload []byte
 	const interval = time.Second
 
-	for {
+	for !s.done {
 		items, err = s.poller.Poll(interval)
 		if err != nil {
 			return err
@@ -74,4 +78,5 @@ func (s *Router) Run() error {
 			}
 		}
 	}
+	return nil
 }

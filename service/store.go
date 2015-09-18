@@ -23,6 +23,7 @@ type Store interface {
 	SetJob(*pb.Job) error
 	// SetObserver adds a new observer for updates
 	SetObserver(Observer)
+	Close() error
 	// TODO: expose feedback service address?
 	// If the master is re-elected (after the failure of the old master), feedback service
 	// needs to be available on the new master node.

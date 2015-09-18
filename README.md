@@ -6,8 +6,7 @@
 
 ## Dependencies
 
-- [zmq](github.com/pebbe/zmq4)
-- [grpc](google.golang.org/grpc)
+- [libzmq](https://github.com/zeromq/libzmq)
 
 kron is a simple distributed job scheduler.
 
