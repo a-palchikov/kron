@@ -1,6 +1,7 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"log"
 
@@ -82,10 +83,10 @@ func connectToStore(apiAddr string, subscriptionAddr string) (*store, error) {
 		done:      make(chan struct{}),
 	}
 
-	if err = mux.Add(service.ScheduleUpdateNotification, s.schedules); err != nil {
+	if err = mux.Add(service.ScheduleUpdateKey, s.schedules); err != nil {
 		return nil, err
 	}
-	if err = mux.Add(service.JobUpdateNotification, s.jobs); err != nil {
+	if err = mux.Add(service.JobUpdateKey, s.jobs); err != nil {
 		return nil, err
 	}
 
@@ -102,18 +103,30 @@ func (s *store) Close() error {
 
 func (s *store) SetSchedule(jobs []*pb.Job) error {
 	var err error
+	var payload []byte
 
-	_, err = s.client.SetSchedule(context.Background(), &storepb.SetScheduleRequest{
-		Jobs: jobs,
+	payload, err = json.Marshal(jobs)
+	if err != nil {
+		return err
+	}
+	_, err = s.client.Set(context.Background(), &storepb.SetRequest{
+		Key:   service.ScheduleUpdateKey,
+		Value: payload,
 	})
 	return err
 }
 
 func (s *store) SetJob(job *pb.Job) error {
 	var err error
+	var payload []byte
 
-	_, err = s.client.ScheduleJob(context.Background(), &storepb.ScheduleJobRequest{
-		Job: job,
+	payload, err = json.Marshal(job)
+	if err != nil {
+		return err
+	}
+	_, err = s.client.Set(context.Background(), &storepb.SetRequest{
+		Key:   service.JobUpdateKey,
+		Value: payload,
 	})
 	return err
 }

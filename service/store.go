@@ -3,8 +3,8 @@ package service
 import pb "github.com/a-palchikov/kron/proto/servicepb"
 
 const (
-	ScheduleUpdateNotification = "SetSchedule"
-	JobUpdateNotification      = "SetJob"
+	ScheduleUpdateKey = "scheduler/SetSchedule"
+	JobUpdateKey      = "scheduler/SetJob"
 )
 
 type Observer interface {
