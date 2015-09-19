@@ -1,7 +1,6 @@
 package scheduler
 
 import (
-	// "log"
 	"sort"
 	"time"
 
@@ -19,39 +18,50 @@ type (
 	}
 
 	Scheduler struct {
+		Clock
 		// Jobs are scheduled on this channel
 		Next chan JobId
 		// Expired jobs are reported here
 		Expired chan JobId
-		queue   chan *job
+		queue   chan []*job
 		jobs    []*job
 		done    chan struct{}
 	}
 )
 
+var clock realClock
+
 func New() (*Scheduler, error) {
+	return NewWithClock(clock)
+}
+
+func NewWithClock(clock Clock) (*Scheduler, error) {
 	s := &Scheduler{
+		Clock:   clock,
 		Next:    make(chan JobId),
 		Expired: make(chan JobId),
-		queue:   make(chan *job),
+		queue:   make(chan []*job),
 		done:    make(chan struct{}),
 	}
 
 	return s, nil
 }
 
-func (s *Scheduler) Submit(job *pb.Job) JobId {
-	id := nextJobId()
-	s.queue <- newJob(job, id)
-	return id
+func (s *Scheduler) Submit(job *pb.Job) {
+	s.SubmitMultiple([]*pb.Job{job})
 }
 
-func newJob(j *pb.Job, id JobId) *job {
-	job := &job{
-		id:   id,
-		expr: cronexpr.MustParse(j.When),
+func (s *Scheduler) SubmitMultiple(newJobs []*pb.Job) {
+	var jobs []*job
+
+	for _, j := range newJobs {
+		job := &job{
+			id:   JobId(j.Id),
+			expr: cronexpr.MustParse(j.When),
+		}
+		jobs = append(jobs, job)
 	}
-	return job
+	s.queue <- jobs
 }
 
 func (s *Scheduler) Close() {
@@ -60,11 +70,11 @@ func (s *Scheduler) Close() {
 }
 
 func (s *Scheduler) Run() {
-	nextTime := time.Now()
+	nextTime := s.Clock.Now()
 
 	for {
 		var tick <-chan time.Time
-		var newJob *job
+		var jobs []*job
 		var scheduled []*job
 
 		sort.Sort(byTime{s.jobs})
@@ -73,7 +83,7 @@ func (s *Scheduler) Run() {
 
 		if len(s.jobs) > 0 {
 			tickDuration := s.jobs[0].next.Sub(nextTime)
-			tick = time.After(tickDuration)
+			tick = s.Clock.After(tickDuration)
 			scheduled = append(scheduled, s.jobs[0])
 			// aggregate tasks with the same time in future into scheduled
 			for _, job := range s.jobs[1:] {
@@ -84,13 +94,14 @@ func (s *Scheduler) Run() {
 		}
 
 		select {
-		case newJob = <-s.queue:
-			nextTime = time.Now()
-			s.jobs = append(s.jobs, newJob)
-			newJob.next = newJob.expr.Next(nextTime)
-			// log.Printf("new job %v for %v", newJob, newJob.next)
+		case jobs = <-s.queue:
+			nextTime = s.Clock.Now()
+			s.jobs = append(s.jobs, jobs...)
+			for _, job := range jobs {
+				job.next = job.expr.Next(nextTime)
+			}
 		case <-tick:
-			nextTime = time.Now()
+			nextTime = s.Clock.Now()
 			for _, job := range scheduled {
 				s.Next <- job.id
 				job.next = job.expr.Next(nextTime)
@@ -123,10 +134,6 @@ func (s *Scheduler) numExpired(now time.Time) int {
 		pos++
 	}
 	return pos
-}
-
-func nextJobId() JobId {
-	return JobId(time.Now().UnixNano() / 100)
 }
 
 type byTime struct {
