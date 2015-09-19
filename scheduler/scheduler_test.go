@@ -43,21 +43,22 @@ func TestSchedulesJobsInProperOrder(t *testing.T) {
 	when := parseTime("2000-Jan-01 01:00:00")
 	expected := []JobId{3, 2, 1}
 	var actual []JobId
+	done := make(chan struct{})
 
 	go func() {
-		for {
+		for len(actual) < len(expected) {
 			select {
 			case <-scheduler.Expired:
 			case id := <-scheduler.Next:
 				actual = append(actual, id)
 			}
 		}
+		done <- struct{}{}
 	}()
 
 	fake.rewind(when)
 	scheduler.SubmitMultiple(jobs)
-	// FIXME: spend some time
-	time.Sleep(100 * time.Millisecond)
+	<-done
 
 	assertEqual(t, expected, actual)
 }
