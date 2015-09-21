@@ -1,0 +1,44 @@
+@startuml
+
+title System Overview (defunct)
+
+node "Client 1" as C1
+node "Client 2" as C2
+
+cloud "cluster" {
+  frame master {
+    node Master as M
+    interface Feedback
+    interface "Scheduler Api" as iface_SchedApi
+  }
+  node "Slave 1" as S1
+  node "Slave 2" as S2
+  node "Slave 3" as S3
+
+  M --> S1
+  M --> S2
+  M --> S3
+
+  S1 .up.> Feedback : "Progress\nupdate"
+  S2 .up.> Feedback : "Progress\nupdate"
+  S3 .up.> Feedback : "Progress\nupdate"
+}
+
+database "Key/Value Store" {
+  frame Store {
+    interface "Key/Value Push Service" as iface_StorePush
+    interface "Key/Value API" as iface_StoreApi
+  }
+}
+
+S1 <- iface_StorePush : "Update\nnotifications"
+S2 <- iface_StorePush : "Update\nnotifications"
+S3 <- iface_StorePush : "Update\nnotifications"
+
+M -> iface_StoreApi : "Persist current\njob schedule"
+M -> iface_StoreApi : "Announce\nnew job"
+
+C1 .down.> iface_SchedApi : "API"
+C2 .down.> iface_SchedApi : "API"
+
+@enduml

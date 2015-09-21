@@ -40,7 +40,6 @@ func main() {
 
 	var err error
 	s := &server{
-		done:    make(chan struct{}),
 		values:  make(map[string][]byte),
 		mu:      &sync.Mutex{},
 		updates: make(chan keyUpdate),
@@ -80,7 +79,7 @@ func createPushServer(impl *server) error {
 	}
 	impl.socket = socket
 	log.Printf("PUSH service on %d", *pushPort)
-	go impl.loop()
+	impl.start()
 	return nil
 }
 
@@ -108,21 +107,24 @@ func (s *server) Close() {
 	s.socket.Close()
 }
 
-func (s *server) loop() {
+func (s *server) start() {
+	s.done = make(chan struct{})
 	var err error
 
-	for {
-		select {
-		case update := <-s.updates:
-			// FIXME: report error
-			if err = send(s.socket, update); err != nil {
-				log.Printf("cannot push update for key=%s", update.key)
+	go func() {
+		for {
+			select {
+			case update := <-s.updates:
+				// FIXME: report error
+				if err = send(s.socket, update); err != nil {
+					log.Printf("cannot push update for key=%s: %v", update.key, err)
+				}
+			case <-s.done:
+				close(s.done)
+				return
 			}
-		case <-s.done:
-			s.done <- struct{}{}
-			return
 		}
-	}
+	}()
 }
 
 func send(socket *zmq.Socket, update keyUpdate) error {

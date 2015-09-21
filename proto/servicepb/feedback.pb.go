@@ -27,28 +27,6 @@ func (m *JobRef) Reset()         { *m = JobRef{} }
 func (m *JobRef) String() string { return proto.CompactTextString(m) }
 func (*JobRef) ProtoMessage()    {}
 
-type JobStartedRequest struct {
-	Job *JobRef `protobuf:"bytes,1,opt,name=job" json:"job,omitempty"`
-}
-
-func (m *JobStartedRequest) Reset()         { *m = JobStartedRequest{} }
-func (m *JobStartedRequest) String() string { return proto.CompactTextString(m) }
-func (*JobStartedRequest) ProtoMessage()    {}
-
-func (m *JobStartedRequest) GetJob() *JobRef {
-	if m != nil {
-		return m.Job
-	}
-	return nil
-}
-
-type JobStartedResponse struct {
-}
-
-func (m *JobStartedResponse) Reset()         { *m = JobStartedResponse{} }
-func (m *JobStartedResponse) String() string { return proto.CompactTextString(m) }
-func (*JobStartedResponse) ProtoMessage()    {}
-
 type JobProgressStep struct {
 	Job    *JobRef                 `protobuf:"bytes,1,opt,name=job" json:"job,omitempty"`
 	Output *JobProgressStep_Output `protobuf:"bytes,2,opt,name=output" json:"output,omitempty"`
@@ -88,28 +66,6 @@ func (m *JobProgressResponse) Reset()         { *m = JobProgressResponse{} }
 func (m *JobProgressResponse) String() string { return proto.CompactTextString(m) }
 func (*JobProgressResponse) ProtoMessage()    {}
 
-type JobStoppedRequest struct {
-	Job *JobRef `protobuf:"bytes,1,opt,name=job" json:"job,omitempty"`
-}
-
-func (m *JobStoppedRequest) Reset()         { *m = JobStoppedRequest{} }
-func (m *JobStoppedRequest) String() string { return proto.CompactTextString(m) }
-func (*JobStoppedRequest) ProtoMessage()    {}
-
-func (m *JobStoppedRequest) GetJob() *JobRef {
-	if m != nil {
-		return m.Job
-	}
-	return nil
-}
-
-type JobStoppedResponse struct {
-}
-
-func (m *JobStoppedResponse) Reset()         { *m = JobStoppedResponse{} }
-func (m *JobStoppedResponse) String() string { return proto.CompactTextString(m) }
-func (*JobStoppedResponse) ProtoMessage()    {}
-
 // Reference imports to suppress errors if they are not otherwise used.
 var _ context.Context
 var _ grpc.ClientConn
@@ -117,11 +73,7 @@ var _ grpc.ClientConn
 // Client API for FeedbackService service
 
 type FeedbackServiceClient interface {
-	// JobStarted notifies the master that the job has started on given node
-	JobStarted(ctx context.Context, in *JobStartedRequest, opts ...grpc.CallOption) (*JobStartedResponse, error)
 	JobProgress(ctx context.Context, opts ...grpc.CallOption) (FeedbackService_JobProgressClient, error)
-	// JobStopped notifies the master that the job has stopped on given node
-	JobStopped(ctx context.Context, in *JobStoppedRequest, opts ...grpc.CallOption) (*JobStoppedResponse, error)
 }
 
 type feedbackServiceClient struct {
@@ -130,15 +82,6 @@ type feedbackServiceClient struct {
 
 func NewFeedbackServiceClient(cc *grpc.ClientConn) FeedbackServiceClient {
 	return &feedbackServiceClient{cc}
-}
-
-func (c *feedbackServiceClient) JobStarted(ctx context.Context, in *JobStartedRequest, opts ...grpc.CallOption) (*JobStartedResponse, error) {
-	out := new(JobStartedResponse)
-	err := grpc.Invoke(ctx, "/servicepb.FeedbackService/JobStarted", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func (c *feedbackServiceClient) JobProgress(ctx context.Context, opts ...grpc.CallOption) (FeedbackService_JobProgressClient, error) {
@@ -175,39 +118,14 @@ func (x *feedbackServiceJobProgressClient) CloseAndRecv() (*JobProgressResponse,
 	return m, nil
 }
 
-func (c *feedbackServiceClient) JobStopped(ctx context.Context, in *JobStoppedRequest, opts ...grpc.CallOption) (*JobStoppedResponse, error) {
-	out := new(JobStoppedResponse)
-	err := grpc.Invoke(ctx, "/servicepb.FeedbackService/JobStopped", in, out, c.cc, opts...)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 // Server API for FeedbackService service
 
 type FeedbackServiceServer interface {
-	// JobStarted notifies the master that the job has started on given node
-	JobStarted(context.Context, *JobStartedRequest) (*JobStartedResponse, error)
 	JobProgress(FeedbackService_JobProgressServer) error
-	// JobStopped notifies the master that the job has stopped on given node
-	JobStopped(context.Context, *JobStoppedRequest) (*JobStoppedResponse, error)
 }
 
 func RegisterFeedbackServiceServer(s *grpc.Server, srv FeedbackServiceServer) {
 	s.RegisterService(&_FeedbackService_serviceDesc, srv)
-}
-
-func _FeedbackService_JobStarted_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
-	in := new(JobStartedRequest)
-	if err := codec.Unmarshal(buf, in); err != nil {
-		return nil, err
-	}
-	out, err := srv.(FeedbackServiceServer).JobStarted(ctx, in)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
 }
 
 func _FeedbackService_JobProgress_Handler(srv interface{}, stream grpc.ServerStream) error {
@@ -236,31 +154,10 @@ func (x *feedbackServiceJobProgressServer) Recv() (*JobProgressStep, error) {
 	return m, nil
 }
 
-func _FeedbackService_JobStopped_Handler(srv interface{}, ctx context.Context, codec grpc.Codec, buf []byte) (interface{}, error) {
-	in := new(JobStoppedRequest)
-	if err := codec.Unmarshal(buf, in); err != nil {
-		return nil, err
-	}
-	out, err := srv.(FeedbackServiceServer).JobStopped(ctx, in)
-	if err != nil {
-		return nil, err
-	}
-	return out, nil
-}
-
 var _FeedbackService_serviceDesc = grpc.ServiceDesc{
 	ServiceName: "servicepb.FeedbackService",
 	HandlerType: (*FeedbackServiceServer)(nil),
-	Methods: []grpc.MethodDesc{
-		{
-			MethodName: "JobStarted",
-			Handler:    _FeedbackService_JobStarted_Handler,
-		},
-		{
-			MethodName: "JobStopped",
-			Handler:    _FeedbackService_JobStopped_Handler,
-		},
-	},
+	Methods:     []grpc.MethodDesc{},
 	Streams: []grpc.StreamDesc{
 		{
 			StreamName:    "JobProgress",
