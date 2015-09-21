@@ -1,0 +1,39 @@
+@startuml
+
+title System Overview
+
+node "Client 1" as C1
+node "Client 2" as C2
+
+cloud "cluster" {
+  node Master as M {
+    interface API as iface_SchedApi
+    [Resource\nAllocator] as comp_Allocator
+  }
+  node "Slave 1" as S1 {
+    frame "Executor 1" {
+      [Task 1]
+      [Task 2]
+    }
+  }
+  node "Slave 2" as S2 {
+    frame "Executor 2" {
+      [Task 3]
+    }
+  }
+  node "Slave 3" as S3 {
+  }
+
+  S1 -up-> comp_Allocator : Available\nresources\n(cpu/memory/disk)
+  S2 -up-> comp_Allocator : Available\nResources\n(cpu/memory/disk)
+  S3 -up-> comp_Allocator : Available\nResources\n(cpu/memory/disk)
+
+  S1 <-up-> M
+  S2 <-up-> M
+  S3 <-up-> M
+}
+
+C1 .down.> iface_SchedApi : "Job\n(required resources)"
+C2 .down.> iface_SchedApi : "Job\n(required resources)"
+
+@enduml
