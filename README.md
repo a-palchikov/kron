@@ -3,6 +3,7 @@
 - [Building](https://github.com/a-palchikov/kron/wiki/Building)
 - [Usage](https://github.com/a-palchikov/kron/wiki/Usage)
 - [Command reference](https://github.com/a-palchikov/kron/wiki/CommandLine)
+- [Design](https://github.com/a-palchikov/kron/wiki/Design-overview)
 
 ## Dependencies
 
