@@ -6,14 +6,13 @@ node "Client 1" as C1
 node "Client 2" as C2
 
 cloud "cluster" {
-  frame master {
-    node Master as M
+  node Scheduler as M {
     interface Feedback
     interface "Scheduler Api" as iface_SchedApi
   }
-  node "Slave 1" as S1
-  node "Slave 2" as S2
-  node "Slave 3" as S3
+  node "Worker 1" as S1
+  node "Worker 2" as S2
+  node "Worker 3" as S3
 
   M --> S1
   M --> S2
@@ -25,10 +24,8 @@ cloud "cluster" {
 }
 
 database "Key/Value Store" {
-  frame Store {
-    interface "Key/Value Push Service" as iface_StorePush
-    interface "Key/Value API" as iface_StoreApi
-  }
+  interface "Key/Value Push Service" as iface_StorePush
+  interface "Key/Value API" as iface_StoreApi
 }
 
 S1 <- iface_StorePush : "Update\nnotifications"
