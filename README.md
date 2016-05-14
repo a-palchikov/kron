@@ -1,3 +1,5 @@
+This project is not actively maintained.
+
 ## About kron
 
 - [Building](https://github.com/a-palchikov/kron/wiki/Building)
